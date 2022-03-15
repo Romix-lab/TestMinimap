@@ -1,0 +1,16 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{CE6AD2A8-4BB7-EBA5-5F73-49A2CF4908FE}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "TestMinimap",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine"
+			]
+		}
+	]
+}
