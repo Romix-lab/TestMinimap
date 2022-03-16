@@ -65,7 +65,7 @@ protected:
 	virtual void BeginPlay() override;
 	void ProcessVision();
 	void EstimateVisionArea(ATestMinimapCharacter* Character, TArray<FLineSegment> &AreaLines);
-
+	bool Multitrace(TArray<FHitResult>& Hits, FVector Start, FVector End,  FCollisionQueryParams CollisionQueryParams);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

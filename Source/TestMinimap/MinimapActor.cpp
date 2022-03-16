@@ -73,7 +73,6 @@ void AMinimapActor::EstimateVisionArea(ATestMinimapCharacter* Character, TArray<
 		FLinearColor::Green : FLinearColor::Red;
 	
 	UWorld* World = GetWorld();
-	TArray<FHitResult> Hits;
 	FHitResult Hit;
 	FVector StartPoint;
 	FRotator ViewRotation;
@@ -84,8 +83,7 @@ void AMinimapActor::EstimateVisionArea(ATestMinimapCharacter* Character, TArray<
 	float AngleDeltaX = -180.f / static_cast<float>(CheckVisionStepsNum - 1);
 	FCollisionQueryParams CollisionQueryParams = FCollisionQueryParams::DefaultQueryParam;
 	CollisionQueryParams.AddIgnoredActor(Character);
-	FVector2D Last;
-
+	
 	if (World->LineTraceSingleByChannel(Hit, StartPoint, LeftPoint * Character->VisionDistance + StartPoint, ECollisionChannel::ECC_Visibility, CollisionQueryParams))
 	{
 		float Thickness = FVector2D::Distance(FVector2D(Hit.Location.X, Hit.Location.Y), FVector2D(StartPoint.X, StartPoint.Y))
@@ -95,20 +93,26 @@ void AMinimapActor::EstimateVisionArea(ATestMinimapCharacter* Character, TArray<
 	}
 	// TArray<AActor*> ActorsToIgnore;
 	// ActorsToIgnore.Add(Character);
-	// TArray<TEnumAsByte<EObjectTypeQuery> > ObjectTypes;
-	// ObjectTypes.Add(EObjectTypeQuery::ObjectTypeQuery1);
+	TArray<TEnumAsByte<EObjectTypeQuery> > ObjectTypes;
+	ObjectTypes.Add(EObjectTypeQuery::ObjectTypeQuery1);
 
 	// Rotate clockwize down to 9 oclock step by step
 	for (int i = 0; i < CheckVisionStepsNum; i++)
 	{
+
 		int NHitsLast = INT_MAX;
 		FVector EndPoint = LeftPoint.RotateAngleAxis(AngleDeltaX * i, Character->GetActorForwardVector());
+		FVector End = EndPoint * Character->VisionDistance + StartPoint;
+		FVector2D Last = FVector2D::ZeroVector;
+
 		float AngleDeltaY = -FMath::Asin(EndPoint.Z) * 2 * 180.f / (PI * static_cast<float>(CheckVisionStepsNum - 1));
-		float LastScaleY = 0;
 		for (int j = 0; j < CheckVisionStepsNum; j++)
 		{
-			//UKismetSystemLibrary::LineTraceMultiForObjects(World, StartPoint, EndPoint * Character->VisionDistance + StartPoint, ObjectTypes, false, ActorsToIgnore, EDrawDebugTrace::ForOneFrame, Hits, true);
-			if (World->LineTraceMultiByObjectType(Hits, StartPoint, EndPoint * Character->VisionDistance + StartPoint, FCollisionObjectQueryParams::AllStaticObjects, CollisionQueryParams))
+			TArray<FHitResult> Hits;
+
+			//if(UKismetSystemLibrary::LineTraceMultiForObjects(World, StartPoint,End, ObjectTypes, false, ActorsToIgnore, EDrawDebugTrace::ForOneFrame, Hits, true))
+			//if (World->LineTraceMultiByObjectType(Hits, StartPoint, End, FCollisionObjectQueryParams::AllObjects, CollisionQueryParams))
+			if (Multitrace(Hits, StartPoint, End, CollisionQueryParams))
 			{
 				float Thickness = FVector2D::Distance(FVector2D(Hits[0].Location.X, Hits[0].Location.Y), FVector2D(StartPoint.X, StartPoint.Y))
 					* FMath::Sin(-0.5f * PI * AngleDeltaX / 180.f) / 2.f;
@@ -122,11 +126,35 @@ void AMinimapActor::EstimateVisionArea(ATestMinimapCharacter* Character, TArray<
 			}
 			else
 			{
+				if (NHitsLast == 1 && Last.Size() >= 0.8f * Character->VisionDistance)
+				{
+					float Thickness = Character->VisionDistance * FMath::Sin(-0.5f * PI * AngleDeltaX / 180.f) / 2.f;
+					AreaLines.Add(FLineSegment(Last, FVector2D(End.X, End.Y), NormalColor, Thickness));
+				}
 				NHitsLast = INT_MAX;
+				//break;
 			}
 			// Rotate vector in vertical parallel plane of forward vector 
 
 			EndPoint = EndPoint.RotateAngleAxis(AngleDeltaY, FVector(EndPoint.Y, -EndPoint.X, 0.f));
+			End = EndPoint * Character->VisionDistance + StartPoint;
 		}
 	}
+}
+
+bool AMinimapActor::Multitrace(TArray<FHitResult>& Hits, FVector Start, FVector End, FCollisionQueryParams CollisionQueryParams)
+
+{
+	bool Res = false;
+	UWorld* World = GetWorld();
+	TArray<FHitResult> HitsTmp;
+	FVector Unit = (End - Start);
+	Unit.Normalize();
+	while (World->LineTraceMultiByChannel(HitsTmp, Start, End, ECollisionChannel::ECC_Visibility, CollisionQueryParams))
+	{
+		Start = HitsTmp.Last().Location + Unit;
+		Hits.Append(HitsTmp);
+		Res = true;
+	}
+	return Res;
 }
