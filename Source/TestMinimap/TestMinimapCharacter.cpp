@@ -48,7 +48,7 @@ ATestMinimapCharacter::ATestMinimapCharacter()
 	VisionDistance = 10000.f;
 	AngleOfVisionDeg = 30.f;
 	ConstructorHelpers::FObjectFinder<UStaticMesh> Helper(TEXT("StaticMesh'/Engine/BasicShapes/Plane.Plane'"));
-
+	
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
@@ -142,36 +142,5 @@ void ATestMinimapCharacter::MoveRight(float Value)
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		// add movement in that direction
 		AddMovementInput(Direction, Value);
-	}
-}
-
-void ATestMinimapCharacter::ProcessVision()
-{
-
-}
-
-void ATestMinimapCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
-void ATestMinimapCharacter::Tick(float DeltaSeconds)
-{
-}
-
-void ATestMinimapCharacter::OnPixelBeginOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (OtherActor != this)
-	{
-
-		Cast<UStaticMeshComponent>(Cast<UBoxComponent>(OverlappedComp)->GetChildComponent(0))->SetMaterial(0, VisionColidingMaterial);
-	}
-}
-
-void ATestMinimapCharacter::OnPixelEndOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (OtherActor != this)
-	{
-		Cast<UStaticMeshComponent>(Cast<UBoxComponent>(OverlappedComp)->GetChildComponent(0))->SetMaterial(0, VisionMaterial);
 	}
 }

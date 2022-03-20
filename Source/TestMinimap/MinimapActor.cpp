@@ -1,9 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-
+#include "MinimapActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "TestMinimapCharacter.h"
+#include "Landscape.h"
+#include "Components/SceneCaptureComponent2D.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "MinimapActor.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "UObject/ConstructorHelpers.h"
 
 // Sets default values
 AMinimapActor::AMinimapActor()
@@ -11,13 +14,36 @@ AMinimapActor::AMinimapActor()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	CheckVisionStepsNum = 20;
+	MinimapCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("MinimapCaptureComponent"));
+	MinimapCaptureComponent->SetWorldRotation(FRotator(-90.f, -90.f, 0.f));
+	MinimapCaptureComponent->ProjectionType = ECameraProjectionMode::Orthographic;
+	// TextureTarget = CreateDefaultSubobject<UTextureRenderTarget2D>(TEXT("RenderTarget"));
+	// TextureTarget->InitAutoFormat(256, 256);
+	// MinimapCaptureComponent->TextureTarget = TextureTarget;
+	ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> MatClassFinder(TEXT("TextureRenderTarget2D'/Game/ThirdPersonCPP/Blueprints/MinimapRenderingTarget.MinimapRenderingTarget'"));
+	if (MatClassFinder.Object)
+	{
+		MinimapCaptureComponent->TextureTarget = MatClassFinder.Object;
+	}
 }
+
+/*UTextureRenderTarget2D* AMinimapActor::GetRenderTarget()
+{
+	return TextureTarget;
+}*/
 
 // Called when the game starts or when spawned
 void AMinimapActor::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	UI = CreateWidget<UMainUI, APlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0), UMainUI::StaticClass());
+
+	ALandscape* Landscape = Cast<ALandscape>(UGameplayStatics::GetActorOfClass(GetWorld(), ALandscape::StaticClass()));
+	FVector BoxExtent;
+	FVector Origin;
+	Landscape->GetActorBounds(true, Origin, BoxExtent, false);
+	SetActorLocation(Origin + FVector(0.f, 0.f, BoxExtent.Z + 10000), false, nullptr, ETeleportType::TeleportPhysics);
+	MinimapCaptureComponent->OrthoWidth = FMath::Max(BoxExtent.X, BoxExtent.Y) * 2.f;
 }
 
 // Called every frame
@@ -64,7 +90,8 @@ void AMinimapActor::ProcessVision()
 		}
 	}
 	Lines0.Append(Lines1);
-	OnCalculatedVision.Broadcast(FLineSegments(Lines0));
+	Vision = FLineSegments(Lines0);
+	UI->DrawVision(&Vision);
 }
 
 void AMinimapActor::EstimateVisionArea(ATestMinimapCharacter* Character, TArray<FLineSegment> &AreaLines)
@@ -78,7 +105,7 @@ void AMinimapActor::EstimateVisionArea(ATestMinimapCharacter* Character, TArray<
 	FRotator ViewRotation;
 	Character->GetActorEyesViewPoint(StartPoint, ViewRotation);
 	// Search from 3 oclock
-	FVector LeftPoint = Character->GetActorForwardVector().RotateAngleAxis(Character->AngleOfVisionDeg, FVector(0.f, 0.f, 1.f));
+	FVector LeftPoint = Character->GetController()->GetControlRotation().Vector().RotateAngleAxis(Character->AngleOfVisionDeg, FVector(0.f, 0.f, 1.f));
 
 	float AngleDeltaX = -180.f / static_cast<float>(CheckVisionStepsNum - 1);
 	FCollisionQueryParams CollisionQueryParams = FCollisionQueryParams::DefaultQueryParam;
@@ -90,9 +117,7 @@ void AMinimapActor::EstimateVisionArea(ATestMinimapCharacter* Character, TArray<
 			* FMath::Sin(-0.5f * PI * AngleDeltaX / 180.f) / 2.f;
 		AreaLines.Add(FLineSegment(FVector2D(Hit.Location.X, Hit.Location.Y), FVector2D(Hit.Location.X + 1.f, Hit.Location.Y + 1.f),
 			NormalColor, Thickness));
-	}
-	// TArray<AActor*> ActorsToIgnore;
-	// ActorsToIgnore.Add(Character);
+	};
 	TArray<TEnumAsByte<EObjectTypeQuery> > ObjectTypes;
 	ObjectTypes.Add(EObjectTypeQuery::ObjectTypeQuery1);
 
@@ -101,7 +126,7 @@ void AMinimapActor::EstimateVisionArea(ATestMinimapCharacter* Character, TArray<
 	{
 
 		int NHitsLast = INT_MAX;
-		FVector EndPoint = LeftPoint.RotateAngleAxis(AngleDeltaX * i, Character->GetActorForwardVector());
+		FVector EndPoint = LeftPoint.RotateAngleAxis(AngleDeltaX * i, Character->GetController()->GetControlRotation().Vector());
 		FVector End = EndPoint * Character->VisionDistance + StartPoint;
 		FVector2D Last = FVector2D::ZeroVector;
 
@@ -110,8 +135,6 @@ void AMinimapActor::EstimateVisionArea(ATestMinimapCharacter* Character, TArray<
 		{
 			TArray<FHitResult> Hits;
 
-			//if(UKismetSystemLibrary::LineTraceMultiForObjects(World, StartPoint,End, ObjectTypes, false, ActorsToIgnore, EDrawDebugTrace::ForOneFrame, Hits, true))
-			//if (World->LineTraceMultiByObjectType(Hits, StartPoint, End, FCollisionObjectQueryParams::AllObjects, CollisionQueryParams))
 			if (Multitrace(Hits, StartPoint, End, CollisionQueryParams))
 			{
 				float Thickness = FVector2D::Distance(FVector2D(Hits[0].Location.X, Hits[0].Location.Y), FVector2D(StartPoint.X, StartPoint.Y))

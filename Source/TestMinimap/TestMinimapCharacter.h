@@ -39,23 +39,7 @@ public:
 	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = Vision)
 	float AngleOfVisionDeg;
 
-	
-
-	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = Vision)
-	UMaterial *VisionMaterial;
-
-	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = Vision)
-	UMaterial *VisionColidingMaterial;
-
-
-	TArray<UStaticMeshComponent *> SightPixels;
-
-	TArray<UBoxComponent*> SightBoxes;
-
-	void BeginPlay() override;
-	void Tick(float DeltaSeconds) override;
 protected:
-	int PixelsNum;
 	/** Resets HMD orientation in VR. */
 	void OnResetVR();
 
@@ -83,16 +67,10 @@ protected:
 	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 
-	void ProcessVision();
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
-	UFUNCTION()
-	void OnPixelBeginOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	
-	UFUNCTION()
-	void OnPixelEndOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 public:
 	/** Returns CameraBoom subobject **/
